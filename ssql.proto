@@ -1,0 +1,182 @@
+syntax = "proto3";
+
+option go_package = "/;ssql";
+
+message Aux {
+  bool local_only = 1;
+  uint32 tuple_count = 2;
+  repeated uint32 aggregate_attributes = 3;
+  repeated uint32 group_attributes = 4;
+}
+
+message Statement {
+  repeated Attribute find = 1;
+  string from = 2;
+  repeated Expr where = 3;
+  repeated OrderBy order_by = 4;
+  uint32 limit = 5;
+  Aux aux = 6;
+}
+
+message Parameter {
+  oneof value {
+    double double = 1;
+    int64 int = 2;
+  }
+}
+
+message Function {
+  enum Func {
+    AVG = 0;
+    SUM = 1;
+    MIN = 2;
+    MAX = 3;
+    COUNT = 4;
+    PERCENTILE = 5;
+    PARTITION = 6;
+  }
+  Func name = 1;
+  repeated Parameter parameter = 2;
+}
+
+// note: ssd runtime contains static convert table to arrow2 data type
+enum Type {
+  list = 0;
+  struct = 1;
+  int8 = 2;
+  uint8 = 3;
+  int16 = 4;
+  uint16 = 5;
+  int32 = 6;
+  uint32 = 7;
+  date32 = 8;
+  float32 = 9;
+  int64 = 10;
+  uint64 = 11;
+  date64 = 12;
+  float64 = 13;
+  bool = 14;
+  text = 15;
+  null = 16;
+}
+
+message Timestamp {
+  enum TimeUnit {
+    Second = 0;
+    Millisecond = 1;
+    Microsecond = 2;
+    Nanosecond = 3;
+  }
+  TimeUnit timeunit = 1;
+  string tz = 2;
+}
+
+message Field {
+  message Struct {
+    repeated Field fields = 1;
+  }
+  uint32 unicode = 1;
+  string name = 2;
+  Type type = 3;
+  Timestamp timestamp = 4;
+  oneof nested {
+    Struct struct = 5;
+    Field list = 6;
+  }
+}
+
+message Attribute {
+  string name = 1;
+  bool group = 2;
+  Function func = 3;
+  //Type type = 4;
+  Field arrow = 4;
+  uint32 tuple_id = 5;
+}
+
+message Expr {
+  oneof field {
+    OR or = 1;
+    Tuple tuple = 2;
+  }
+}
+
+message OR {
+  repeated Expr expr = 1;
+}
+
+enum Operator  {
+  EQ = 0;
+  NEQ = 1;
+  GT = 2;
+  GE = 3;
+  LT = 4;
+  LE = 5;
+  BETWEEN = 6;
+  CONTAIN = 7;
+  EXIST = 8;
+  ISNULL = 9;
+}
+
+message Operand {
+  string content = 1;
+  oneof value {
+    int32 int8 = 2;
+    uint32 uint8 = 3;
+    int32 int16 = 4;
+    uint32 uint16 = 5;
+    int32 int32 = 6;
+    int32 date32 = 7;
+    uint32 uint32 = 8;
+    float float32 = 9;
+    int64 int64 = 10;
+    int64 date64 = 11;
+    uint64 uint64 = 12;
+    double float64 = 13;
+    bool bool = 14;
+    bool text = 15;
+    bool null = 16;
+  };
+}
+
+message Tuple {
+  uint32 id = 1;
+  string name = 2;
+  string path = 3;
+  uint32 unicode = 4;
+  oneof predicate {
+    Nested nested = 5;
+    Binary binary = 6;
+    Unary unary = 7;
+    List list = 8;
+    Type select_only = 9;
+  };
+}
+
+message Nested {
+  repeated Expr expr = 1;
+}
+
+message Unary {
+  Operator op = 1;
+  Operand operand = 2;
+}
+
+message Binary {
+  Operand first = 1;
+  Operand second = 2;
+}
+
+message List {
+  Type type = 1;
+  repeated Operand operands = 2;
+}
+
+message OrderBy {
+  enum Direction {
+    ASC = 0;
+    DESC = 1;
+  }
+  string name = 1;
+  Direction direction = 2;
+}
